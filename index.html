@@ -248,23 +248,48 @@ summary { cursor: pointer; font-size: 12px; color: #6b7280; font-weight: 650; }
   </div>
 
   <div class="card">
-    <h2>Publish to GitHub Pages</h2>
-    <p style="color:#6b7280;font-size:13px;margin-top:0">Your edits live in this browser only. To update what everyone else sees, export <code>data.json</code> and commit it to the repo.</p>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="primary" onclick="exportData()">Export data.json</button>
-      <button onclick="exportCSV()">Export CSV</button>
-      <button onclick="document.getElementById('importFile').click()">Import data.json</button>
-      <input type="file" id="importFile" accept=".json" class="hidden" onchange="importData(event)">
-      <button onclick="reloadPublished()">Discard local edits</button>
-      <button class="danger" onclick="wipe()">Erase all</button>
+    <h2>Publish directly from this page</h2>
+    <p style="color:#6b7280;font-size:13px;margin-top:0">With a GitHub token saved, the <b>Publish</b> button commits <code>data.json</code> straight to the repo — no export, no terminal.</p>
+    <div id="tokenState"></div>
+    <div class="grid" style="margin-top:12px">
+      <div style="grid-column:1/-1"><label>GitHub fine-grained token</label>
+        <input type="password" id="ghToken" placeholder="github_pat_… or ghp_…" autocomplete="off">
+        <div class="hint">Stored only in this browser. Never committed to the repo.</div>
+      </div>
+      <div><label>Repo owner</label><input id="ghOwner" placeholder="Ureddy-org"></div>
+      <div><label>Repo name</label><input id="ghRepo" placeholder="options-5k"></div>
+      <div><label>Branch</label><input id="ghBranch" placeholder="main"></div>
+      <div style="display:flex;align-items:flex-end;gap:6px">
+        <button class="primary" onclick="saveToken()">Save token</button>
+        <button onclick="clearToken()">Forget</button>
+      </div>
     </div>
-    <details open style="margin-top:14px">
-      <summary>Update workflow</summary>
-      <pre style="background:#f6f7f9;padding:12px;border-radius:6px;font-size:12px;overflow-x:auto;margin-top:8px">cp ~/Downloads/data.json .
-git add data.json
-git commit -m "update trades"
-git push</pre>
-      <div class="hint">Live in under a minute. Others just refresh.</div>
+    <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <button class="primary" id="publishBtn" onclick="publish()">Publish to GitHub</button>
+      <button onclick="testToken()">Test connection</button>
+      <span id="pubStatus" class="muted" style="font-size:12.5px"></span>
+    </div>
+    <details style="margin-top:14px">
+      <summary>How to create the token (2 minutes)</summary>
+      <ol style="font-size:12.5px;color:#4b5563;line-height:1.7;padding-left:20px">
+        <li>Open <b>github.com → Settings → Developer settings → Personal access tokens → Fine-grained tokens</b>, then <b>Generate new token</b>.</li>
+        <li><b>Resource owner:</b> pick the org that owns this repo. <b>Repository access:</b> Only select repositories → choose just this one.</li>
+        <li>Under <b>Permissions → Repository permissions</b>, set <b>Contents: Read and write</b>. Nothing else is needed.</li>
+        <li>Set an expiry you're comfortable with, generate, copy, and paste it above.</li>
+      </ol>
+      <div class="banner warn" style="margin-top:8px">Scope it to this one repo with only Contents write. A token stored in a browser can be read by anything with access to that browser profile, so a narrow scope limits the damage if it leaks. Never paste a classic token with full <code>repo</code> scope here.</div>
+    </details>
+    <details style="margin-top:10px">
+      <summary>Manual export / import</summary>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+        <button onclick="exportData()">Export data.json</button>
+        <button onclick="exportCSV()">Export CSV</button>
+        <button onclick="copyJSON()">Copy JSON</button>
+        <button onclick="document.getElementById('importFile').click()">Import data.json</button>
+        <input type="file" id="importFile" accept=".json" class="hidden" onchange="importData(event)">
+        <button onclick="reloadPublished()">Discard local edits</button>
+        <button class="danger" onclick="wipe()">Erase all</button>
+      </div>
     </details>
   </div>
 
@@ -376,8 +401,11 @@ function applyMode(local) {
   const stamp = document.getElementById("stamp");
   stamp.textContent = db.updated ? "Data as of " + db.updated : "";
   if (EDIT && local && published && JSON.stringify(local.trades) !== JSON.stringify(published.trades)) {
+    const hasTok = !!ghCfg().token;
     document.getElementById("alerts").insertAdjacentHTML("afterbegin",
-      `<div class="banner info">You have unpublished local edits. Export <code>data.json</code> from Settings and commit it so the group sees them.</div>`);
+      `<div class="banner info">You have unpublished local edits — the group is still seeing the older data.
+        ${hasTok ? `<button class="sm primary" style="margin-left:8px" onclick="publish()">Publish now</button>`
+                 : `Open <b>Settings &amp; publish</b> to send them live.`}</div>`);
   }
 }
 function save() {
@@ -437,6 +465,7 @@ function render() {
     document.getElementById("sGoal").value = db.goal || 0;
     document.getElementById("sBasis").value = db.basis;
     document.getElementById("sName").value = db.name;
+    renderTokenState();
     updatePreview();
   }
 }
@@ -752,6 +781,131 @@ function saveSettings() {
   db.name = document.getElementById("sName").value.trim() || "5K Options Challenge";
   save(); render();
 }
+/* ---------- publish straight to GitHub ---------- */
+const TKEY = "options5k.gh";
+function ghCfg() {
+  try { return JSON.parse(localStorage.getItem(TKEY)) || {}; } catch (e) { return {}; }
+}
+function renderTokenState() {
+  const c = ghCfg();
+  const el = document.getElementById("tokenState");
+  if (!el) return;
+  el.innerHTML = c.token
+    ? `<div class="banner info" style="margin:0">Token saved for <b>${esc(c.owner)}/${esc(c.repo)}</b> on <b>${esc(c.branch)}</b>. Publishing is enabled in this browser.</div>`
+    : `<div class="banner warn" style="margin:0">No token saved. Add one below to publish from this page, or use manual export.</div>`;
+  const f = { ghOwner: c.owner, ghRepo: c.repo, ghBranch: c.branch };
+  Object.entries(f).forEach(([id, v]) => { const i = document.getElementById(id); if (i && !i.value) i.value = v || ""; });
+  // Pre-fill owner/repo by guessing from the Pages URL.
+  const o = document.getElementById("ghOwner"), r = document.getElementById("ghRepo"), b = document.getElementById("ghBranch");
+  if (o && !o.value && location.hostname.endsWith("github.io")) o.value = location.hostname.split(".")[0];
+  if (r && !r.value) { const seg = location.pathname.split("/").filter(Boolean); if (seg.length) r.value = seg[0]; }
+  if (b && !b.value) b.value = "main";
+  const btn = document.getElementById("publishBtn");
+  if (btn) btn.disabled = !c.token;
+}
+function saveToken() {
+  const token = document.getElementById("ghToken").value.trim();
+  const owner = document.getElementById("ghOwner").value.trim();
+  const repo = document.getElementById("ghRepo").value.trim();
+  const branch = document.getElementById("ghBranch").value.trim() || "main";
+  if (!token) return alert("Paste a token first.");
+  if (!owner || !repo) return alert("Enter the repo owner and name.");
+  if (/^ghp_/.test(token) && !confirm("That looks like a classic token, which typically grants access to all your repos.\n\nA fine-grained token scoped to this single repository is much safer. Save anyway?")) return;
+  localStorage.setItem(TKEY, JSON.stringify({ token, owner, repo, branch }));
+  document.getElementById("ghToken").value = "";
+  renderTokenState();
+  setStatus("Token saved. Try Test connection.", "");
+}
+function clearToken() {
+  if (!confirm("Remove the saved token from this browser?")) return;
+  localStorage.removeItem(TKEY);
+  document.getElementById("ghToken").value = "";
+  renderTokenState();
+  setStatus("Token removed.", "");
+}
+function setStatus(msg, cls) {
+  const el = document.getElementById("pubStatus");
+  if (el) { el.textContent = msg; el.className = cls || "muted"; el.style.fontSize = "12.5px"; }
+}
+async function gh(path, opts) {
+  const c = ghCfg();
+  if (!c.token) throw new Error("No token saved.");
+  const r = await fetch(`https://api.github.com/repos/${c.owner}/${c.repo}${path}`, Object.assign({
+    headers: {
+      "Authorization": "Bearer " + c.token,
+      "Accept": "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28"
+    }
+  }, opts));
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    const hint = r.status === 401 ? " — token invalid or expired."
+      : r.status === 403 ? " — token lacks Contents:write on this repo, or org policy blocks it."
+      : r.status === 404 ? " — repo not found, or the token cannot see it. Check owner/name and that the token's resource owner is the org."
+      : r.status === 409 ? " — branch conflict."
+      : "";
+    throw new Error(`GitHub ${r.status}: ${body.message || r.statusText}${hint}`);
+  }
+  return body;
+}
+async function testToken() {
+  setStatus("Testing…", "");
+  try {
+    const c = ghCfg();
+    const repo = await gh("", {});
+    const f = await gh(`/contents/data.json?ref=${encodeURIComponent(c.branch)}`, {});
+    setStatus(`Connected to ${repo.full_name}. data.json found (${f.size} bytes).`, "pos");
+  } catch (e) { setStatus(e.message, "neg"); }
+}
+async function publish() {
+  const c = ghCfg();
+  if (!c.token) return alert("Save a token first.");
+  const btn = document.getElementById("publishBtn");
+  btn.disabled = true;
+  setStatus("Publishing…", "");
+  try {
+    // Read the live file first so we can detect that someone else changed it.
+    let sha = null, remote = null;
+    try {
+      const cur = await gh(`/contents/data.json?ref=${encodeURIComponent(c.branch)}`, {});
+      sha = cur.sha;
+      remote = JSON.parse(decodeURIComponent(escape(atob(cur.content.replace(/\s/g, "")))));
+    } catch (e) { if (!/404/.test(e.message)) throw e; }
+
+    if (remote && remote.updated && db.updated && remote.updated > db.updated &&
+      !confirm(`The published data.json was updated ${remote.updated}, which is newer than your local copy (${db.updated}).\n\nPublishing will overwrite it. Continue?`)) {
+      setStatus("Cancelled — remote is newer.", "neg"); btn.disabled = false; return;
+    }
+
+    const payload = Object.assign({}, db, { updated: today() });
+    const json = JSON.stringify(payload, null, 2) + "\n";
+    const s = stats();
+    const msg = `Update trades — equity ${money(s.equity)}, ${s.nOpen} open, ${s.nClosed} closed`;
+    const res = await gh("/contents/data.json", {
+      method: "PUT",
+      body: JSON.stringify({
+        message: msg,
+        content: btoa(unescape(encodeURIComponent(json))),
+        branch: c.branch,
+        ...(sha ? { sha } : {})
+      })
+    });
+    db.updated = payload.updated;
+    save();
+    const short = (res.commit && res.commit.sha || "").slice(0, 7);
+    setStatus(`Published as ${short}. Pages rebuilds in about a minute.`, "pos");
+    render();
+  } catch (e) {
+    setStatus(e.message, "neg");
+  } finally { btn.disabled = false; }
+}
+function copyJSON() {
+  const json = JSON.stringify(Object.assign({}, db, { updated: today() }), null, 2);
+  navigator.clipboard.writeText(json)
+    .then(() => setStatus("JSON copied to clipboard.", "pos"))
+    .catch(() => setStatus("Could not access the clipboard — use Export instead.", "neg"));
+}
+
 function exportData() { dl(JSON.stringify(Object.assign({}, db, { updated: today() }), null, 2), "data.json", "application/json"); }
 function exportCSV() {
   const h = ["entry_date", "ticker", "strategy", "expiry", "direction", "contracts", "net_price", "width", "capital_at_risk", "iv", "delta", "spot", "fee_in", "called_by", "exit_date", "exit_price", "fee_out", "outcome", "realized_pnl", "notes"];
