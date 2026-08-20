@@ -71,6 +71,10 @@ summary { cursor: pointer; font-size: 12px; color: #6b7280; font-weight: 650; }
 .foot { color: #9ca3af; font-size: 11.5px; margin-top: 22px; line-height: 1.65; }
 .legrow { display: grid; grid-template-columns: 74px 74px 1fr 1fr 1fr 30px; gap: 6px; margin-bottom: 6px; align-items: end; }
 .hint { font-size: 11px; color: #9ca3af; margin-top: 3px; }
+/* Fixed-height wrapper stops the Chart.js resize feedback loop that made
+   canvases grow taller on every scroll event. */
+.chartbox { position: relative; height: 200px; width: 100%; }
+.chartbox canvas { position: absolute; inset: 0; }
 .topbar { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
 .mode { font-size: 11px; font-weight: 650; padding: 3px 9px; border-radius: 20px; background: #f3f4f6; color: #6b7280; }
 .mode.edit { background: #1a1d21; color: #fff; }
@@ -118,11 +122,11 @@ summary { cursor: pointer; font-size: 12px; color: #6b7280; font-weight: 650; }
   <div class="row">
     <div class="card">
       <h2>Equity curve <span class="muted" style="font-weight:400">— realized, by close date</span></h2>
-      <canvas id="equityChart" height="165"></canvas>
+      <div class="chartbox"><canvas id="equityChart"></canvas></div>
     </div>
     <div class="card">
       <h2>Capital at risk by open position</h2>
-      <canvas id="riskChart" height="165"></canvas>
+      <div class="chartbox"><canvas id="riskChart"></canvas></div>
     </div>
   </div>
 
@@ -506,35 +510,118 @@ function renderStrat() {
 }
 
 function renderCharts() {
-  const closed = db.trades.filter(t => t.exit);
-  const dates = [...new Set(closed.map(t => t.exit.date))].sort();
+  // Step per CLOSED TRADE, not per date. Several trades often close the same
+  // day, and collapsing them to one point hides the intermediate swings.
+  const closed = db.trades.filter(t => t.exit)
+    .sort((a, b) => (a.exit.date || "").localeCompare(b.exit.date || "") || (a.date || "").localeCompare(b.date || ""));
   let run = Number(db.start);
-  const series = [run];
-  dates.forEach(d => { closed.filter(t => t.exit.date === d).forEach(t => run += realizedPnl(t)); series.push(run); });
-  drawChart("equityChart", "line", {
-    labels: ["start", ...dates],
-    datasets: [
-      { label: "Equity", data: series, borderColor: "#2563eb", backgroundColor: "#2563eb1f", tension: .25, pointRadius: 2, borderWidth: 2, fill: true },
-      { label: "Starting capital", data: series.map(() => Number(db.start)), borderColor: "#9ca3af", borderDash: [5, 4], pointRadius: 0, borderWidth: 1.5, fill: false }
-    ]
-  }, {
-    scales: { y: { ticks: { callback: v => "$" + v.toLocaleString() } } },
-    plugins: { legend: { position: "bottom", labels: { boxWidth: 10, font: { size: 11 } } } }
+  const labels = ["Start"], series = [run], marks = [];
+  closed.forEach(t => {
+    const p = realizedPnl(t);
+    run += p;
+    labels.push(`${t.ticker} ${t.exit.date.slice(5)}`);
+    series.push(run);
+    marks.push(p >= 0 ? "#15803d" : "#b91c1c");
+  });
+  const startLine = Number(db.start), goal = Number(db.goal) || 0;
+  const ds = [
+    {
+      label: "Equity", data: series, borderColor: "#2563eb", backgroundColor: "#2563eb1f",
+      tension: .2, borderWidth: 2, fill: true,
+      pointRadius: 4, pointBackgroundColor: ["#6b7280", ...marks], pointBorderColor: "#fff", pointBorderWidth: 1.5
+    },
+    { label: "Start", data: series.map(() => startLine), borderColor: "#9ca3af", borderDash: [5, 4], pointRadius: 0, borderWidth: 1.5, fill: false }
+  ];
+  // Only draw the goal line when it won't flatten the equity detail.
+  if (goal && goal <= Math.max(...series) * 1.6) {
+    ds.push({ label: "Goal", data: series.map(() => goal), borderColor: "#2563eb", borderDash: [2, 3], pointRadius: 0, borderWidth: 1.5, fill: false });
+  }
+  drawChart("equityChart", "line", { labels, datasets: ds }, {
+    scales: {
+      y: { ticks: { callback: v => "$" + v.toLocaleString() } },
+      x: { ticks: { maxRotation: 45, minRotation: 0, autoSkip: true, maxTicksLimit: 10, font: { size: 10 } } }
+    },
+    plugins: {
+      legend: { position: "bottom", labels: { boxWidth: 10, font: { size: 11 } } },
+      tooltip: {
+        callbacks: {
+          label: c => {
+            if (c.datasetIndex !== 0) return `${c.dataset.label}: $${c.parsed.y.toLocaleString()}`;
+            const i = c.dataIndex;
+            if (i === 0) return `Starting capital: ${money(startLine)}`;
+            const t = closed[i - 1], p = realizedPnl(t);
+            return [`Equity: ${money(c.parsed.y)}`, `${p >= 0 ? "+" : ""}${money(p)} on ${t.ticker}`, `${t.qty}x ${LABEL[t.strat] || t.strat}`];
+          }
+        }
+      }
+    }
   });
 
-  const open = db.trades.filter(t => !t.exit);
+  const open = db.trades.filter(t => !t.exit).sort((a, b) => capitalAtRisk(b) - capitalAtRisk(a));
   const s = stats();
   drawChart("riskChart", "bar", {
-    labels: open.map(t => `${t.ticker} ${t.expiry ? t.expiry.slice(5) : ""}`),
-    datasets: [{ label: "At risk", data: open.map(t => isNaN(capitalAtRisk(t)) ? 0 : capitalAtRisk(t)), backgroundColor: s.breach ? "#dc2626" : "#10b981", borderRadius: 4 }]
+    labels: open.map(t => t.ticker + (t.expiry ? " " + t.expiry.slice(5) : "")),
+    datasets: [{
+      label: "At risk",
+      data: open.map(t => isNaN(capitalAtRisk(t)) ? 0 : capitalAtRisk(t)),
+      backgroundColor: "#0ea5e9", borderRadius: 4, maxBarThickness: 54
+    }]
   }, {
-    scales: { y: { beginAtZero: true, ticks: { callback: v => "$" + v.toLocaleString() } } },
-    plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => "$" + c.parsed.y.toLocaleString() } } }
-  });
+    scales: {
+      y: { beginAtZero: true, ticks: { callback: v => "$" + v.toLocaleString() },
+           // Keep the cap line visible even when it is above the tallest bar.
+           suggestedMax: Math.max(s.cap * 1.1, ...open.map(t => isNaN(capitalAtRisk(t)) ? 0 : capitalAtRisk(t))) },
+      x: { ticks: { font: { size: 10 } } }
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: {
+        label: c => `${money(c.parsed.y)} at risk`,
+        afterLabel: c => `${pct(c.parsed.y / s.equity)} of equity`
+      } },
+      annotationLine: { value: s.cap, label: `50% cap ${money(s.cap)}` }
+    }
+  }, [capLinePlugin]);
 }
-function drawChart(id, type, data, opts) {
-  if (charts[id]) charts[id].destroy();
-  charts[id] = new Chart(document.getElementById(id), { type, data, options: Object.assign({ responsive: true, maintainAspectRatio: false, animation: { duration: 250 } }, opts) });
+
+// Draws the 50% cap as a horizontal reference line on the risk chart, plus a
+// total-deployed marker, so a breach is visible at a glance.
+const capLinePlugin = {
+  id: "capLine",
+  afterDatasetsDraw(chart, args, opts) {
+    const cfg = chart.options.plugins && chart.options.plugins.annotationLine;
+    if (!cfg || !cfg.value) return;
+    const { ctx, chartArea: { left, right }, scales: { y } } = chart;
+    const py = y.getPixelForValue(cfg.value);
+    if (py < chart.chartArea.top || py > chart.chartArea.bottom) return;
+    ctx.save();
+    ctx.beginPath(); ctx.setLineDash([6, 4]); ctx.lineWidth = 2; ctx.strokeStyle = "#1a1d21";
+    ctx.moveTo(left, py); ctx.lineTo(right, py); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.font = "600 10px -apple-system, sans-serif";
+    const w = ctx.measureText(cfg.label).width + 8;
+    ctx.fillStyle = "#1a1d21";
+    ctx.fillRect(right - w, py - 15, w, 14);
+    ctx.fillStyle = "#fff"; ctx.textAlign = "right";
+    ctx.fillText(cfg.label, right - 4, py - 4);
+    ctx.restore();
+  }
+};
+function drawChart(id, type, data, opts, plugins) {
+  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+  const el = document.getElementById(id);
+  if (!el) return;
+  charts[id] = new Chart(el, {
+    type, data, plugins: plugins || [],
+    options: Object.assign({
+      responsive: true, maintainAspectRatio: false,
+      // Height comes from .chartbox; letting Chart.js resize height too is what
+      // caused the runaway growth on scroll.
+      resizeDelay: 120,
+      animation: { duration: 220 },
+      interaction: { mode: "index", intersect: false }
+    }, opts)
+  });
 }
 
 /* ---------- form ---------- */
