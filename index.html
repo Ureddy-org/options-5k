@@ -100,8 +100,8 @@ summary { cursor: pointer; font-size: 12px; color: #6b7280; font-weight: 650; }
   <div class="tab active" data-tab="dash">Dashboard</div>
   <div class="tab" data-tab="open">Open positions</div>
   <div class="tab" data-tab="closed">Closed trades</div>
-  <div class="tab edit-only hidden" data-tab="add">Log a trade</div>
-  <div class="tab edit-only hidden" data-tab="setup">Settings &amp; publish</div>
+  <div class="tab" data-tab="add">Log a trade</div>
+  <div class="tab" data-tab="setup">Settings &amp; publish</div>
 </div>
 
 <!-- DASHBOARD -->
@@ -378,8 +378,10 @@ async function boot() {
     if (r.ok) published = Object.assign({}, DEFAULTS, await r.json());
   } catch (e) { /* file:// or no data.json — fine */ }
 
-  const params = new URLSearchParams(location.search);
-  EDIT = params.get("edit") === "1" || location.protocol === "file:";
+  // Editing is always available. It is not a security boundary anyway — the
+  // real gate is the GitHub token, which only lives in the scorekeeper's
+  // browser, so nobody else can change what the group sees.
+  EDIT = true;
 
   let local = null;
   try { const raw = localStorage.getItem(KEY); if (raw) local = JSON.parse(raw); } catch (e) {}
@@ -393,19 +395,25 @@ async function boot() {
   render();
 }
 function applyMode(local) {
-  document.getElementById("modeBadge").textContent = EDIT ? "Edit mode" : "View only";
-  document.getElementById("modeBadge").className = "mode" + (EDIT ? " edit" : "");
-  document.querySelectorAll(".edit-only").forEach(e => e.classList.toggle("hidden", !EDIT));
+  // Badge reflects whether THIS browser can publish, which is the meaningful
+  // distinction now that the edit tabs are always visible.
+  const canPub = !!ghCfg().token;
+  const badge = document.getElementById("modeBadge");
+  badge.textContent = canPub ? "Publishing enabled" : "Local edits only";
+  badge.className = "mode" + (canPub ? " edit" : "");
+  badge.title = canPub
+    ? "A GitHub token is saved in this browser, so Publish will update what everyone sees."
+    : "Changes stay in this browser. Only the scorekeeper's browser holds the token needed to publish.";
   document.getElementById("basisMode").disabled = true;
   if (db.name) { document.title = db.name; document.querySelector("h1").textContent = db.name; }
   const stamp = document.getElementById("stamp");
   stamp.textContent = db.updated ? "Data as of " + db.updated : "";
-  if (EDIT && local && published && JSON.stringify(local.trades) !== JSON.stringify(published.trades)) {
+  if (local && published && JSON.stringify(local.trades) !== JSON.stringify(published.trades)) {
     const hasTok = !!ghCfg().token;
     document.getElementById("alerts").insertAdjacentHTML("afterbegin",
-      `<div class="banner info">You have unpublished local edits — the group is still seeing the older data.
+      `<div class="banner info">You have local edits that differ from the published data — the group is still seeing the older version.
         ${hasTok ? `<button class="sm primary" style="margin-left:8px" onclick="publish()">Publish now</button>`
-                 : `Open <b>Settings &amp; publish</b> to send them live.`}</div>`);
+                 : ` Without a GitHub token these stay in your browser only; use <b>Discard local edits</b> under Settings to go back to the published data.`}</div>`);
   }
 }
 function save() {
