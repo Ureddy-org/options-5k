@@ -82,7 +82,7 @@ summary { cursor: pointer; font-size: 12px; color: #6b7280; font-weight: 650; }
 <div class="topbar">
   <div>
     <h1>5K Options Challenge</h1>
-    <div class="sub" id="subline">One model portfolio · everyone mirrors these trades in their own $5,000 account</div>
+    <div class="sub" id="subline">One model portfolio · everyone mirrors these trades in their own account · 50% capital-at-risk cap</div>
   </div>
   <div style="display:flex;gap:8px;align-items:center">
     <span class="mode" id="modeBadge">View only</span>
@@ -233,6 +233,7 @@ summary { cursor: pointer; font-size: 12px; color: #6b7280; font-weight: 650; }
     <h2>Fund settings</h2>
     <div class="grid">
       <div><label>Starting capital ($)</label><input type="number" id="sStart" step="100"></div>
+      <div><label>Goal ($)</label><input type="number" id="sGoal" step="100"><div class="hint">0 hides the progress bar</div></div>
       <div><label>Cap basis</label><select id="sBasis">
         <option value="start">50% of starting capital</option>
         <option value="equity">50% of current equity</option>
@@ -276,7 +277,7 @@ git push</pre>
 
 <script>
 const KEY = "options5k.model.v2";
-const DEFAULTS = { name: "5K Options Challenge", start: 5000, basis: "start", trades: [], updated: null };
+const DEFAULTS = { name: "1K to 5K Options Challenge", start: 1000, goal: 5000, basis: "equity", trades: [], updated: null };
 let db = null, published = null, closingId = null, charts = {}, EDIT = false;
 
 /* ---------- helpers ---------- */
@@ -334,7 +335,10 @@ function stats() {
     avgLoss: losses.length ? grossL / losses.length : 0,
     profitFactor: grossL > 0 ? grossW / grossL : (grossW > 0 ? Infinity : null),
     retPct: start > 0 ? realized / start : 0,
-    toTarget: start > 0 ? equity / (start * 2) : 0
+    goal: Number(db.goal) || 0,
+    goalPct: db.goal ? equity / Number(db.goal) : 0,
+    goalMult: db.goal && equity > 0 ? Number(db.goal) / equity : 0,
+    cash: equity - deployed
   };
 }
 
@@ -402,12 +406,23 @@ function render() {
     <div style="margin-top:9px">${s.breach
       ? `<span class="pill bad">Over the limit</span>`
       : `<span class="pill ok">Within limit</span> <span class="muted" style="font-size:12px">${money(Math.max(0, s.cap - s.deployed))} available under the rule</span>`}
-      <span class="muted" style="font-size:12px"> · per person, from a ${money(s.start)} account</span></div>`;
+      <span class="muted" style="font-size:12px"> · ${money(s.cash)} cash uncommitted</span></div>
+    ${s.goal ? `<div style="margin-top:16px;padding-top:14px;border-top:1px solid #f3f4f6">
+      <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:600">
+        <span>Progress to ${money(s.goal)} goal</span>
+        <span>${pct(s.goalPct)}</span>
+      </div>
+      <div class="gauge" style="height:20px"><div class="fill" style="width:${Math.min(100, s.goalPct * 100)}%;background:#2563eb"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:#6b7280">
+        <span>${money(s.start)} start</span>
+        <span>${s.goalMult > 1 ? `${s.goalMult.toFixed(2)}x to go` : "goal reached"}</span>
+        <span>${money(s.goal)}</span>
+      </div></div>` : ""}`;
 
   document.getElementById("statRow").innerHTML = [
     ["Equity", money(s.equity), s.realized >= 0 ? "pos" : "neg", `${s.realized >= 0 ? "+" : ""}${money(s.realized)} realized`],
     ["Return", (s.retPct >= 0 ? "+" : "") + pct(s.retPct), s.retPct >= 0 ? "pos" : "neg", `on ${money(s.start)} start`],
-    ["Free capital", money(s.free), s.free >= 0 ? "" : "neg", `${s.nOpen} open · ${s.nClosed} closed`],
+    ["Cash left", money(s.cash), s.cash >= 0 ? "" : "neg", `${s.nOpen} open · ${s.nClosed} closed`],
     ["Win rate", s.winRate == null ? "—" : pct(s.winRate), "", s.nClosed ? `${money(s.avgWin)} avg win / ${money(s.avgLoss)} avg loss` : "no closed trades"],
     ["Profit factor", s.profitFactor == null ? "—" : (s.profitFactor === Infinity ? "∞" : s.profitFactor.toFixed(2)), s.profitFactor && s.profitFactor >= 1 ? "pos" : "neg", "gross win / gross loss"]
   ].map(([l, v, c, sub]) => `<div class="card"><div class="statlbl">${l}</div><div class="stat ${c}">${v}</div><div class="muted" style="font-size:12px">${sub}</div></div>`).join("");
@@ -415,6 +430,7 @@ function render() {
   renderOpen(); renderClosed(); renderStrat(); renderCharts();
   if (EDIT) {
     document.getElementById("sStart").value = db.start;
+    document.getElementById("sGoal").value = db.goal || 0;
     document.getElementById("sBasis").value = db.basis;
     document.getElementById("sName").value = db.name;
     updatePreview();
@@ -644,6 +660,7 @@ function saveSettings() {
   const v = Number(document.getElementById("sStart").value);
   if (!v || v <= 0) return alert("Starting capital must be a positive number.");
   db.start = v;
+  db.goal = Number(document.getElementById("sGoal").value) || 0;
   db.basis = document.getElementById("sBasis").value;
   db.name = document.getElementById("sName").value.trim() || "5K Options Challenge";
   save(); render();
