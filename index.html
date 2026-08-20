@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>5K Options Challenge</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
+<style>
+:root { color-scheme: light; }
+* { box-sizing: border-box; }
+body {
+  margin: 0; padding: 24px 20px 40px;
+  font: 14px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, sans-serif;
+  background: #f6f7f9; color: #1a1d21;
+  max-width: 1180px; margin-inline: auto;
+}
+h1 { font-size: 21px; margin: 0 0 3px; letter-spacing: -.01em; }
+h2 { font-size: 14px; margin: 0 0 13px; letter-spacing: .01em; }
+.sub { color: #6b7280; font-size: 13px; margin-bottom: 18px; }
+.card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 18px; margin-bottom: 16px; }
+.row { display: flex; gap: 16px; flex-wrap: wrap; }
+.row > .card { flex: 1; min-width: 270px; }
+label { display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: #6b7280; margin-bottom: 4px; font-weight: 650; }
+input, select, textarea {
+  width: 100%; padding: 7px 9px; border: 1px solid #d1d5db; border-radius: 6px;
+  font-size: 13px; background: #fff; color: #1a1d21; font-family: inherit;
+}
+input:focus, select:focus, textarea:focus { outline: 2px solid #93c5fd; outline-offset: -1px; border-color: #3b82f6; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 12px; }
+button {
+  padding: 8px 14px; border-radius: 6px; border: 1px solid #d1d5db;
+  background: #fff; font-size: 13px; font-weight: 500; cursor: pointer; color: #1a1d21;
+}
+button:hover { background: #f3f4f6; }
+button.primary { background: #1a1d21; color: #fff; border-color: #1a1d21; }
+button.primary:hover { background: #33383f; }
+button.danger { color: #b91c1c; border-color: #fca5a5; }
+button.sm { padding: 3px 8px; font-size: 12px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: #6b7280;
+     border-bottom: 1px solid #e5e7eb; padding: 6px 8px; font-weight: 650; white-space: nowrap; }
+td { padding: 7px 8px; border-bottom: 1px solid #f3f4f6; white-space: nowrap; }
+tbody tr:last-child td { border-bottom: none; }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+.pos { color: #15803d; font-weight: 600; }
+.neg { color: #b91c1c; font-weight: 600; }
+.muted { color: #9ca3af; }
+.stat { font-size: 25px; font-weight: 660; font-variant-numeric: tabular-nums; letter-spacing: -.025em; line-height: 1.15; }
+.statlbl { font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: #6b7280; font-weight: 650; margin-bottom: 3px; }
+.gauge { height: 28px; background: #eef0f3; border-radius: 6px; position: relative; overflow: hidden; margin: 11px 0 6px; }
+.gauge .fill { height: 100%; transition: width .35s, background .35s; }
+.gauge .limit { position: absolute; top: -4px; bottom: -4px; left: 50%; width: 2px; background: #1a1d21; }
+.gauge .limit::after { content: "50% cap"; position: absolute; left: 6px; top: 5px; font-size: 10px; font-weight: 700; color: #1a1d21; white-space: nowrap; }
+.pill { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 650; }
+.pill.ok { background: #dcfce7; color: #166534; }
+.pill.warn { background: #fef3c7; color: #92400e; }
+.pill.bad { background: #fee2e2; color: #991b1b; }
+.pill.info { background: #e0e7ff; color: #3730a3; }
+.banner { padding: 11px 14px; border-radius: 8px; margin-bottom: 14px; font-size: 13px; font-weight: 500; }
+.banner.bad { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+.banner.warn { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+.banner.info { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+.tabs { display: flex; gap: 2px; margin-bottom: 15px; border-bottom: 1px solid #e5e7eb; flex-wrap: wrap; }
+.tab { padding: 8px 14px; cursor: pointer; font-size: 13px; font-weight: 500; border-bottom: 2px solid transparent; color: #6b7280; }
+.tab:hover { color: #1a1d21; }
+.tab.active { border-bottom-color: #1a1d21; color: #1a1d21; font-weight: 600; }
+.hidden { display: none !important; }
+.scroll { overflow-x: auto; }
+details { margin-top: 10px; }
+summary { cursor: pointer; font-size: 12px; color: #6b7280; font-weight: 650; }
+.foot { color: #9ca3af; font-size: 11.5px; margin-top: 22px; line-height: 1.65; }
+.legrow { display: grid; grid-template-columns: 74px 74px 1fr 1fr 1fr 30px; gap: 6px; margin-bottom: 6px; align-items: end; }
+.hint { font-size: 11px; color: #9ca3af; margin-top: 3px; }
+.topbar { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+.mode { font-size: 11px; font-weight: 650; padding: 3px 9px; border-radius: 20px; background: #f3f4f6; color: #6b7280; }
+.mode.edit { background: #1a1d21; color: #fff; }
+.notesrow td { white-space: normal; padding-top: 0; font-size: 12px; color: #6b7280; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <h1>5K Options Challenge</h1>
+    <div class="sub" id="subline">One model portfolio · everyone mirrors these trades in their own $5,000 account</div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <span class="mode" id="modeBadge">View only</span>
+    <span class="muted" style="font-size:11.5px" id="stamp"></span>
+  </div>
+</div>
+
+<div id="alerts"></div>
+
+<div class="tabs" id="tabs">
+  <div class="tab active" data-tab="dash">Dashboard</div>
+  <div class="tab" data-tab="open">Open positions</div>
+  <div class="tab" data-tab="closed">Closed trades</div>
+  <div class="tab edit-only hidden" data-tab="add">Log a trade</div>
+  <div class="tab edit-only hidden" data-tab="setup">Settings &amp; publish</div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="tab-dash">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+      <h2 style="margin:0">Capital deployment</h2>
+      <select id="basisMode" style="width:auto" disabled>
+        <option value="start">50% of starting capital</option>
+        <option value="equity">50% of current equity</option>
+      </select>
+    </div>
+    <div id="gaugeWrap"></div>
+  </div>
+
+  <div class="row" id="statRow"></div>
+
+  <div class="row">
+    <div class="card">
+      <h2>Equity curve <span class="muted" style="font-weight:400">— realized, by close date</span></h2>
+      <canvas id="equityChart" height="165"></canvas>
+    </div>
+    <div class="card">
+      <h2>Capital at risk by open position</h2>
+      <canvas id="riskChart" height="165"></canvas>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Performance by strategy <span class="muted" style="font-weight:400">— closed trades</span></h2>
+    <div class="scroll"><table id="stratTable"></table></div>
+  </div>
+</div>
+
+<!-- OPEN -->
+<div id="tab-open" class="hidden">
+  <div class="card">
+    <h2>Open positions</h2>
+    <div class="scroll"><table id="openTable"></table></div>
+  </div>
+  <div class="card hidden" id="closeWrap">
+    <h2 id="closeTitle">Close position</h2>
+    <div class="grid">
+      <div><label>Exit date</label><input type="date" id="cDate"></div>
+      <div><label>Exit net price / contract</label><input type="number" id="cPrice" step="0.01" value="0"><div class="hint">0 = expired worthless</div></div>
+      <div><label>Exit fees ($)</label><input type="number" id="cFee" step="0.01" value="0"></div>
+      <div><label>Outcome</label><select id="cOutcome">
+        <option value="closed">Closed manually</option>
+        <option value="expired">Expired</option>
+        <option value="assigned">Assigned / exercised</option>
+        <option value="stopped">Stopped out</option>
+      </select></div>
+    </div>
+    <div id="closePreview" style="margin-top:12px"></div>
+    <div style="margin-top:12px;display:flex;gap:8px">
+      <button class="primary" onclick="confirmClose()">Confirm close</button>
+      <button onclick="cancelClose()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- CLOSED -->
+<div id="tab-closed" class="hidden">
+  <div class="card">
+    <h2>Closed trades</h2>
+    <div class="scroll"><table id="closedTable"></table></div>
+  </div>
+</div>
+
+<!-- ADD -->
+<div id="tab-add" class="hidden">
+  <div class="card">
+    <h2>Log a new position</h2>
+    <div class="grid">
+      <div><label>Entry date</label><input type="date" id="fDate"></div>
+      <div><label>Underlying</label><input id="fTicker" placeholder="SPY" style="text-transform:uppercase"></div>
+      <div><label>Strategy</label><select id="fStrat">
+        <option value="long_call">Long call</option>
+        <option value="long_put">Long put</option>
+        <option value="debit_call_spread">Call debit spread</option>
+        <option value="debit_put_spread">Put debit spread</option>
+        <option value="credit_call_spread">Call credit spread</option>
+        <option value="credit_put_spread">Put credit spread</option>
+        <option value="iron_condor">Iron condor</option>
+        <option value="iron_butterfly">Iron butterfly</option>
+        <option value="calendar">Calendar / diagonal</option>
+        <option value="covered_call">Covered call</option>
+        <option value="csp">Cash-secured put</option>
+        <option value="naked">Naked / undefined risk</option>
+        <option value="other">Other</option>
+      </select></div>
+      <div><label>Contracts</label><input type="number" id="fQty" value="1" min="1" step="1"></div>
+      <div><label>Expiry</label><input type="date" id="fExpiry"></div>
+      <div><label>Called by</label><input id="fBy" placeholder="who suggested it"></div>
+    </div>
+
+    <div class="grid" style="margin-top:14px">
+      <div><label>Direction</label><select id="fDir">
+        <option value="debit">Debit (paid)</option>
+        <option value="credit">Credit (received)</option>
+      </select></div>
+      <div><label>Net price / contract</label><input type="number" id="fPrice" step="0.01" placeholder="1.85"><div class="hint">Positive number</div></div>
+      <div id="widthWrap"><label>Spread width ($)</label><input type="number" id="fWidth" step="0.5" placeholder="5"><div class="hint">Widest wing</div></div>
+      <div><label>Entry fees ($)</label><input type="number" id="fFeeIn" step="0.01" value="0"></div>
+    </div>
+
+    <div class="grid" style="margin-top:14px">
+      <div><label>IV at entry (%)</label><input type="number" id="fIV" step="0.1" placeholder="28.4"></div>
+      <div><label>Net delta</label><input type="number" id="fDelta" step="0.01" placeholder="0.35"></div>
+      <div><label>Underlying price</label><input type="number" id="fSpot" step="0.01" placeholder="512.40"></div>
+      <div id="riskOverrideWrap" class="hidden"><label>Max loss override ($)</label><input type="number" id="fRiskOverride" step="1"><div class="hint">Required — undefined risk</div></div>
+    </div>
+
+    <details>
+      <summary>Leg detail (optional)</summary>
+      <div id="legs" style="margin-top:10px"></div>
+      <button class="sm" onclick="addLeg()">+ Add leg</button>
+    </details>
+
+    <div style="margin-top:14px"><label>Thesis / notes</label><textarea id="fNotes" rows="2" placeholder="Why this trade, and what invalidates it"></textarea></div>
+
+    <div id="preview" class="card" style="background:#f9fafb;margin:16px 0 0"></div>
+    <div style="margin-top:14px;display:flex;gap:8px">
+      <button class="primary" onclick="saveTrade()">Add position</button>
+      <button onclick="resetForm()">Clear</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETUP -->
+<div id="tab-setup" class="hidden">
+  <div class="card">
+    <h2>Fund settings</h2>
+    <div class="grid">
+      <div><label>Starting capital ($)</label><input type="number" id="sStart" step="100"></div>
+      <div><label>Cap basis</label><select id="sBasis">
+        <option value="start">50% of starting capital</option>
+        <option value="equity">50% of current equity</option>
+      </select><div class="hint">Fixed basis is the stricter rule</div></div>
+      <div><label>Challenge name</label><input id="sName" placeholder="5K Options Challenge"></div>
+      <div style="display:flex;align-items:flex-end"><button class="primary" onclick="saveSettings()">Save</button></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Publish to GitHub Pages</h2>
+    <p style="color:#6b7280;font-size:13px;margin-top:0">Your edits live in this browser only. To update what everyone else sees, export <code>data.json</code> and commit it to the repo.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="primary" onclick="exportData()">Export data.json</button>
+      <button onclick="exportCSV()">Export CSV</button>
+      <button onclick="document.getElementById('importFile').click()">Import data.json</button>
+      <input type="file" id="importFile" accept=".json" class="hidden" onchange="importData(event)">
+      <button onclick="reloadPublished()">Discard local edits</button>
+      <button class="danger" onclick="wipe()">Erase all</button>
+    </div>
+    <details open style="margin-top:14px">
+      <summary>Update workflow</summary>
+      <pre style="background:#f6f7f9;padding:12px;border-radius:6px;font-size:12px;overflow-x:auto;margin-top:8px">cp ~/Downloads/data.json .
+git add data.json
+git commit -m "update trades"
+git push</pre>
+      <div class="hint">Live in under a minute. Others just refresh.</div>
+    </details>
+  </div>
+
+  <div class="card">
+    <h2>Sample data</h2>
+    <p style="color:#6b7280;font-size:13px;margin-top:0">Loads example trades so you can see the layout. Erase before real use.</p>
+    <button onclick="loadSample()">Load sample trades</button>
+  </div>
+</div>
+
+<div class="foot">
+  Capital at risk is maximum theoretical loss: net debit paid for debit structures, and width minus net credit for defined-risk credit structures. Undefined-risk positions require a manual figure. Assignment, early exercise, gap risk and pin risk can produce losses beyond these numbers, and multi-leg positions may not fill at the modelled net price. Figures assume each participant trades identical size from identical capital; your own fills, fees and tax treatment will differ. This is a bookkeeping tool, not risk management, and nothing here is a recommendation to trade.
+</div>
+
+<script>
+const KEY = "options5k.model.v2";
+const DEFAULTS = { name: "5K Options Challenge", start: 5000, basis: "start", trades: [], updated: null };
+let db = null, published = null, closingId = null, charts = {}, EDIT = false;
+
+/* ---------- helpers ---------- */
+function uid() { return Math.random().toString(36).slice(2, 10); }
+function money(n) { return (n < 0 ? "-$" : "$") + Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function pct(n) { return (n * 100).toFixed(1) + "%"; }
+function sgn(n) { return n >= 0 ? "pos" : "neg"; }
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+function today() { return new Date().toISOString().slice(0, 10); }
+
+const DEFINED_CREDIT = ["credit_call_spread", "credit_put_spread", "iron_condor", "iron_butterfly"];
+const UNDEFINED = ["naked", "calendar", "other"];
+const LABEL = {
+  long_call: "Long call", long_put: "Long put",
+  debit_call_spread: "Call debit spread", debit_put_spread: "Put debit spread",
+  credit_call_spread: "Call credit spread", credit_put_spread: "Put credit spread",
+  iron_condor: "Iron condor", iron_butterfly: "Iron butterfly",
+  calendar: "Calendar/diagonal", covered_call: "Covered call",
+  csp: "Cash-secured put", naked: "Naked/undefined", other: "Other"
+};
+
+/* ---------- verified math (unchanged from tested version) ---------- */
+function capitalAtRisk(t) {
+  if (t.riskOverride != null && t.riskOverride !== "" && !isNaN(t.riskOverride)) return Number(t.riskOverride);
+  const q = Number(t.qty) || 0, p = Number(t.price) || 0, w = Number(t.width) || 0, fee = Number(t.feeIn) || 0;
+  if (t.dir === "debit") return p * 100 * q + fee;
+  if (t.strat === "csp") return (w || p) * 100 * q - p * 100 * q + fee;
+  if (DEFINED_CREDIT.includes(t.strat)) return (w - p) * 100 * q + fee;
+  return NaN;
+}
+function realizedPnl(t) {
+  if (!t.exit) return null;
+  const q = Number(t.qty) || 0;
+  const inFlow = (t.dir === "credit" ? 1 : -1) * Number(t.price) * 100 * q;
+  const outFlow = (t.dir === "credit" ? -1 : 1) * Number(t.exit.price) * 100 * q;
+  return inFlow + outFlow - (Number(t.feeIn) || 0) - (Number(t.exit.fee) || 0);
+}
+function stats() {
+  const open = db.trades.filter(t => !t.exit), closed = db.trades.filter(t => t.exit);
+  const start = Number(db.start) || 0;
+  const realized = closed.reduce((s, t) => s + realizedPnl(t), 0);
+  const deployed = open.reduce((s, t) => s + (isNaN(capitalAtRisk(t)) ? 0 : capitalAtRisk(t)), 0);
+  const unknown = open.filter(t => isNaN(capitalAtRisk(t))).length;
+  const equity = start + realized;
+  const cap = (db.basis === "equity" ? equity : start) * 0.5;
+  const wins = closed.filter(t => realizedPnl(t) > 0), losses = closed.filter(t => realizedPnl(t) < 0);
+  const grossW = wins.reduce((s, t) => s + realizedPnl(t), 0);
+  const grossL = Math.abs(losses.reduce((s, t) => s + realizedPnl(t), 0));
+  return {
+    start, realized, deployed, equity, cap, unknown,
+    free: equity - deployed, util: cap > 0 ? deployed / cap : 0,
+    breach: deployed > cap + 0.005, nOpen: open.length, nClosed: closed.length,
+    winRate: closed.length ? wins.length / closed.length : null,
+    avgWin: wins.length ? grossW / wins.length : 0,
+    avgLoss: losses.length ? grossL / losses.length : 0,
+    profitFactor: grossL > 0 ? grossW / grossL : (grossW > 0 ? Infinity : null),
+    retPct: start > 0 ? realized / start : 0,
+    toTarget: start > 0 ? equity / (start * 2) : 0
+  };
+}
+
+/* ---------- load / save ---------- */
+async function boot() {
+  try {
+    const r = await fetch("data.json", { cache: "no-store" });
+    if (r.ok) published = Object.assign({}, DEFAULTS, await r.json());
+  } catch (e) { /* file:// or no data.json — fine */ }
+
+  const params = new URLSearchParams(location.search);
+  EDIT = params.get("edit") === "1" || location.protocol === "file:";
+
+  let local = null;
+  try { const raw = localStorage.getItem(KEY); if (raw) local = JSON.parse(raw); } catch (e) {}
+
+  // Edit mode prefers local edits; view mode always shows the published file.
+  if (EDIT) db = local || published || Object.assign({}, DEFAULTS);
+  else db = published || local || Object.assign({}, DEFAULTS);
+  db = Object.assign({}, DEFAULTS, db);
+
+  applyMode(local);
+  render();
+}
+function applyMode(local) {
+  document.getElementById("modeBadge").textContent = EDIT ? "Edit mode" : "View only";
+  document.getElementById("modeBadge").className = "mode" + (EDIT ? " edit" : "");
+  document.querySelectorAll(".edit-only").forEach(e => e.classList.toggle("hidden", !EDIT));
+  document.getElementById("basisMode").disabled = true;
+  if (db.name) { document.title = db.name; document.querySelector("h1").textContent = db.name; }
+  const stamp = document.getElementById("stamp");
+  stamp.textContent = db.updated ? "Data as of " + db.updated : "";
+  if (EDIT && local && published && JSON.stringify(local.trades) !== JSON.stringify(published.trades)) {
+    document.getElementById("alerts").insertAdjacentHTML("afterbegin",
+      `<div class="banner info">You have unpublished local edits. Export <code>data.json</code> from Settings and commit it so the group sees them.</div>`);
+  }
+}
+function save() {
+  if (!EDIT) return;
+  db.updated = today();
+  try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) { alert("Could not save locally: " + e.message); }
+}
+
+/* ---------- render ---------- */
+function render() {
+  const s = stats();
+  const alerts = [];
+  if (s.breach) alerts.push(`<div class="banner bad">Over the 50% cap — ${money(s.deployed)} deployed against a ${money(s.cap)} limit, ${money(s.deployed - s.cap)} over.</div>`);
+  else if (s.util > 0.85) alerts.push(`<div class="banner warn">At ${pct(s.util)} of the cap — only ${money(s.cap - s.deployed)} of headroom left.</div>`);
+  if (s.unknown) alerts.push(`<div class="banner warn">${s.unknown} open position(s) have no max-loss figure and are excluded from deployed capital. The cap is not fully enforced until you set one.</div>`);
+  document.getElementById("alerts").innerHTML = alerts.join("");
+  applyMode(null);
+
+  const w = Math.min(100, s.cap > 0 ? (s.deployed / s.cap) * 50 : 0);
+  const col = s.breach ? "#dc2626" : s.util > 0.85 ? "#f59e0b" : "#10b981";
+  document.getElementById("gaugeWrap").innerHTML = `
+    <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:600">
+      <span>${money(s.deployed)} at risk</span>
+      <span class="${s.breach ? 'neg' : ''}">cap ${money(s.cap)} · ${s.cap > 0 ? pct(s.util) : "—"} used</span>
+    </div>
+    <div class="gauge"><div class="fill" style="width:${w}%;background:${col}"></div><div class="limit"></div></div>
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:#6b7280">
+      <span>$0</span><span>${money(s.equity)} equity</span>
+    </div>
+    <div style="margin-top:9px">${s.breach
+      ? `<span class="pill bad">Over the limit</span>`
+      : `<span class="pill ok">Within limit</span> <span class="muted" style="font-size:12px">${money(Math.max(0, s.cap - s.deployed))} available under the rule</span>`}
+      <span class="muted" style="font-size:12px"> · per person, from a ${money(s.start)} account</span></div>`;
+
+  document.getElementById("statRow").innerHTML = [
+    ["Equity", money(s.equity), s.realized >= 0 ? "pos" : "neg", `${s.realized >= 0 ? "+" : ""}${money(s.realized)} realized`],
+    ["Return", (s.retPct >= 0 ? "+" : "") + pct(s.retPct), s.retPct >= 0 ? "pos" : "neg", `on ${money(s.start)} start`],
+    ["Free capital", money(s.free), s.free >= 0 ? "" : "neg", `${s.nOpen} open · ${s.nClosed} closed`],
+    ["Win rate", s.winRate == null ? "—" : pct(s.winRate), "", s.nClosed ? `${money(s.avgWin)} avg win / ${money(s.avgLoss)} avg loss` : "no closed trades"],
+    ["Profit factor", s.profitFactor == null ? "—" : (s.profitFactor === Infinity ? "∞" : s.profitFactor.toFixed(2)), s.profitFactor && s.profitFactor >= 1 ? "pos" : "neg", "gross win / gross loss"]
+  ].map(([l, v, c, sub]) => `<div class="card"><div class="statlbl">${l}</div><div class="stat ${c}">${v}</div><div class="muted" style="font-size:12px">${sub}</div></div>`).join("");
+
+  renderOpen(); renderClosed(); renderStrat(); renderCharts();
+  if (EDIT) {
+    document.getElementById("sStart").value = db.start;
+    document.getElementById("sBasis").value = db.basis;
+    document.getElementById("sName").value = db.name;
+    updatePreview();
+  }
+}
+
+function renderOpen() {
+  const ts = db.trades.filter(t => !t.exit).sort((a, b) => (a.expiry || "").localeCompare(b.expiry || ""));
+  const el = document.getElementById("openTable");
+  if (!ts.length) { el.innerHTML = `<tbody><tr><td class="muted">No open positions.</td></tr></tbody>`; return; }
+  el.innerHTML = `<thead><tr><th>Entry</th><th>Ticker</th><th>Strategy</th><th>Expiry</th><th class="num">DTE</th><th class="num">Qty</th><th class="num">Net</th><th class="num">At risk</th><th class="num">IV</th><th class="num">Δ</th><th>Called by</th>${EDIT ? "<th></th>" : ""}</tr></thead><tbody>` +
+    ts.map(t => {
+      const risk = capitalAtRisk(t);
+      const dte = t.expiry ? Math.round((new Date(t.expiry) - new Date(today())) / 86400000) : null;
+      return `<tr>
+        <td class="muted">${esc(t.date)}</td>
+        <td><b>${esc(t.ticker)}</b></td>
+        <td>${LABEL[t.strat] || esc(t.strat)}</td>
+        <td>${esc(t.expiry || "—")}</td>
+        <td class="num ${dte != null && dte <= 2 ? "neg" : ""}">${dte == null ? "—" : dte + "d"}</td>
+        <td class="num">${t.qty}</td>
+        <td class="num">${t.dir === "credit" ? "+" : "−"}${Number(t.price).toFixed(2)}</td>
+        <td class="num">${isNaN(risk) ? '<span class="pill warn">not set</span>' : money(risk)}</td>
+        <td class="num muted">${t.iv ? Number(t.iv).toFixed(1) + "%" : "—"}</td>
+        <td class="num muted">${t.delta ? Number(t.delta).toFixed(2) : "—"}</td>
+        <td class="muted">${esc(t.by || "—")}</td>
+        ${EDIT ? `<td><button class="sm" onclick="startClose('${t.id}')">Close</button> <button class="sm danger" onclick="delTrade('${t.id}')">×</button></td>` : ""}
+      </tr>` + (t.notes ? `<tr class="notesrow"><td colspan="${EDIT ? 12 : 11}">${esc(t.notes)}</td></tr>` : "");
+    }).join("") + `</tbody>`;
+}
+
+function renderClosed() {
+  const ts = db.trades.filter(t => t.exit).sort((a, b) => (b.exit.date || "").localeCompare(a.exit.date || ""));
+  const el = document.getElementById("closedTable");
+  if (!ts.length) { el.innerHTML = `<tbody><tr><td class="muted">No closed trades yet.</td></tr></tbody>`; return; }
+  el.innerHTML = `<thead><tr><th>In</th><th>Out</th><th class="num">Held</th><th>Ticker</th><th>Strategy</th><th class="num">Qty</th><th class="num">Entry</th><th class="num">Exit</th><th class="num">At risk</th><th class="num">P&amp;L</th><th class="num">Return</th><th>Outcome</th><th>Called by</th>${EDIT ? "<th></th>" : ""}</tr></thead><tbody>` +
+    ts.map(t => {
+      const p = realizedPnl(t), risk = capitalAtRisk(t);
+      const held = Math.round((new Date(t.exit.date) - new Date(t.date)) / 86400000);
+      return `<tr>
+        <td class="muted">${esc(t.date)}</td><td class="muted">${esc(t.exit.date)}</td>
+        <td class="num">${isNaN(held) ? "—" : held + "d"}</td>
+        <td><b>${esc(t.ticker)}</b></td><td>${LABEL[t.strat] || esc(t.strat)}</td>
+        <td class="num">${t.qty}</td>
+        <td class="num">${t.dir === "credit" ? "+" : "−"}${Number(t.price).toFixed(2)}</td>
+        <td class="num">${Number(t.exit.price).toFixed(2)}</td>
+        <td class="num muted">${isNaN(risk) ? "—" : money(risk)}</td>
+        <td class="num ${sgn(p)}">${money(p)}</td>
+        <td class="num ${sgn(p)}">${isNaN(risk) || !risk ? "—" : pct(p / risk)}</td>
+        <td><span class="pill info">${esc(t.exit.outcome)}</span></td>
+        <td class="muted">${esc(t.by || "—")}</td>
+        ${EDIT ? `<td><button class="sm" onclick="reopen('${t.id}')">Undo</button> <button class="sm danger" onclick="delTrade('${t.id}')">×</button></td>` : ""}
+      </tr>`;
+    }).join("") + `</tbody>`;
+}
+
+function renderStrat() {
+  const g = {};
+  db.trades.filter(t => t.exit).forEach(t => {
+    const k = t.strat; g[k] = g[k] || { n: 0, w: 0, pnl: 0, risk: 0 };
+    const p = realizedPnl(t), r = capitalAtRisk(t);
+    g[k].n++; if (p > 0) g[k].w++; g[k].pnl += p; if (!isNaN(r)) g[k].risk += r;
+  });
+  const keys = Object.keys(g).sort((a, b) => g[b].pnl - g[a].pnl);
+  const el = document.getElementById("stratTable");
+  if (!keys.length) { el.innerHTML = `<tbody><tr><td class="muted">Nothing closed yet.</td></tr></tbody>`; return; }
+  el.innerHTML = `<thead><tr><th>Strategy</th><th class="num">Trades</th><th class="num">Win rate</th><th class="num">Total P&amp;L</th><th class="num">Avg P&amp;L</th><th class="num">Return on risk</th></tr></thead><tbody>` +
+    keys.map(k => `<tr><td>${LABEL[k] || esc(k)}</td><td class="num">${g[k].n}</td>
+      <td class="num">${pct(g[k].w / g[k].n)}</td>
+      <td class="num ${sgn(g[k].pnl)}">${money(g[k].pnl)}</td>
+      <td class="num ${sgn(g[k].pnl)}">${money(g[k].pnl / g[k].n)}</td>
+      <td class="num ${sgn(g[k].pnl)}">${g[k].risk ? pct(g[k].pnl / g[k].risk) : "—"}</td></tr>`).join("") + `</tbody>`;
+}
+
+function renderCharts() {
+  const closed = db.trades.filter(t => t.exit);
+  const dates = [...new Set(closed.map(t => t.exit.date))].sort();
+  let run = Number(db.start);
+  const series = [run];
+  dates.forEach(d => { closed.filter(t => t.exit.date === d).forEach(t => run += realizedPnl(t)); series.push(run); });
+  drawChart("equityChart", "line", {
+    labels: ["start", ...dates],
+    datasets: [
+      { label: "Equity", data: series, borderColor: "#2563eb", backgroundColor: "#2563eb1f", tension: .25, pointRadius: 2, borderWidth: 2, fill: true },
+      { label: "Starting capital", data: series.map(() => Number(db.start)), borderColor: "#9ca3af", borderDash: [5, 4], pointRadius: 0, borderWidth: 1.5, fill: false }
+    ]
+  }, {
+    scales: { y: { ticks: { callback: v => "$" + v.toLocaleString() } } },
+    plugins: { legend: { position: "bottom", labels: { boxWidth: 10, font: { size: 11 } } } }
+  });
+
+  const open = db.trades.filter(t => !t.exit);
+  const s = stats();
+  drawChart("riskChart", "bar", {
+    labels: open.map(t => `${t.ticker} ${t.expiry ? t.expiry.slice(5) : ""}`),
+    datasets: [{ label: "At risk", data: open.map(t => isNaN(capitalAtRisk(t)) ? 0 : capitalAtRisk(t)), backgroundColor: s.breach ? "#dc2626" : "#10b981", borderRadius: 4 }]
+  }, {
+    scales: { y: { beginAtZero: true, ticks: { callback: v => "$" + v.toLocaleString() } } },
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => "$" + c.parsed.y.toLocaleString() } } }
+  });
+}
+function drawChart(id, type, data, opts) {
+  if (charts[id]) charts[id].destroy();
+  charts[id] = new Chart(document.getElementById(id), { type, data, options: Object.assign({ responsive: true, maintainAspectRatio: false, animation: { duration: 250 } }, opts) });
+}
+
+/* ---------- form ---------- */
+function readForm() {
+  return {
+    date: document.getElementById("fDate").value,
+    ticker: document.getElementById("fTicker").value.trim().toUpperCase(),
+    strat: document.getElementById("fStrat").value,
+    qty: Number(document.getElementById("fQty").value),
+    expiry: document.getElementById("fExpiry").value,
+    by: document.getElementById("fBy").value.trim(),
+    dir: document.getElementById("fDir").value,
+    price: Number(document.getElementById("fPrice").value),
+    width: Number(document.getElementById("fWidth").value),
+    feeIn: Number(document.getElementById("fFeeIn").value) || 0,
+    iv: document.getElementById("fIV").value, delta: document.getElementById("fDelta").value,
+    spot: document.getElementById("fSpot").value,
+    riskOverride: document.getElementById("fRiskOverride").value,
+    notes: document.getElementById("fNotes").value.trim(),
+    legs: readLegs()
+  };
+}
+function updatePreview() {
+  const t = readForm(), el = document.getElementById("preview");
+  if (!el) return;
+  if (!t.price || !t.qty) { el.innerHTML = `<span class="muted">Enter contracts and net price to see capital at risk.</span>`; return; }
+  const risk = capitalAtRisk(t), s = stats();
+  const after = s.deployed + (isNaN(risk) ? 0 : risk);
+  const over = after > s.cap + 0.005;
+  const credit = t.dir === "credit" ? t.price * 100 * t.qty : 0;
+  const per = isNaN(risk) ? 0 : risk / t.qty;
+  el.innerHTML = `
+    <div style="display:flex;gap:26px;flex-wrap:wrap">
+      <div><div class="statlbl">Capital at risk</div><div class="stat">${isNaN(risk) ? "needs override" : money(risk)}</div></div>
+      ${credit ? `<div><div class="statlbl">Credit received</div><div class="stat pos">${money(credit)}</div></div>` : ""}
+      <div><div class="statlbl">Deployed after entry</div><div class="stat ${over ? "neg" : ""}">${money(after)}</div><div class="muted" style="font-size:12px">of ${money(s.cap)} cap</div></div>
+    </div>
+    ${over ? `<div class="banner bad" style="margin:12px 0 0">This breaches the 50% rule by ${money(after - s.cap)}. Maximum that fits: ${per ? Math.floor((s.cap - s.deployed) / per) : 0} contract(s).</div>`
+      : `<div style="margin-top:10px"><span class="pill ok">Within the 50% rule</span> <span class="muted" style="font-size:12px">${money(s.cap - after)} headroom after entry</span></div>`}
+    ${isNaN(risk) ? `<div class="banner warn" style="margin:12px 0 0">No formula-derivable max loss for this strategy. Enter a max-loss override or the cap cannot be enforced.</div>` : ""}`;
+}
+function saveTrade() {
+  const t = readForm();
+  if (!t.ticker) return alert("Enter an underlying ticker.");
+  if (!t.date) return alert("Enter an entry date.");
+  if (!t.price || t.price <= 0) return alert("Enter net price per contract as a positive number — direction is set separately.");
+  if (!t.qty || t.qty < 1) return alert("Enter contract quantity.");
+  if (DEFINED_CREDIT.includes(t.strat) && !t.width) return alert("Credit spreads need a spread width to compute max loss.");
+  if (DEFINED_CREDIT.includes(t.strat) && t.width <= t.price) return alert("Net credit cannot exceed spread width — check the numbers.");
+  const risk = capitalAtRisk(t);
+  if (isNaN(risk)) return alert("This strategy needs a max-loss override before it can be tracked against the cap.");
+  const s = stats();
+  if (s.deployed + risk > s.cap + 0.005 &&
+    !confirm(`This breaches the 50% cap by ${money(s.deployed + risk - s.cap)}.\n\nDeployed would be ${money(s.deployed + risk)} against a ${money(s.cap)} limit.\n\nAdd anyway?`)) return;
+  t.id = uid();
+  db.trades.push(t); save(); resetForm(); render(); showTab("open");
+}
+function resetForm() {
+  ["fTicker", "fPrice", "fWidth", "fIV", "fDelta", "fSpot", "fNotes", "fRiskOverride"].forEach(i => document.getElementById(i).value = "");
+  document.getElementById("fQty").value = 1;
+  document.getElementById("fFeeIn").value = 0;
+  document.getElementById("fDate").value = today();
+  document.getElementById("legs").innerHTML = ""; addLeg();
+  updatePreview();
+}
+function addLeg() {
+  const d = document.createElement("div");
+  d.className = "legrow";
+  d.innerHTML = `<div><label>Side</label><select class="lAct"><option>Buy</option><option>Sell</option></select></div>
+    <div><label>Type</label><select class="lType"><option>Call</option><option>Put</option></select></div>
+    <div><label>Strike</label><input type="number" step="0.5" class="lStrike"></div>
+    <div><label>Expiry</label><input type="date" class="lExp"></div>
+    <div><label>Premium</label><input type="number" step="0.01" class="lPrem"></div>
+    <div><button class="sm danger" onclick="this.closest('.legrow').remove()">×</button></div>`;
+  document.getElementById("legs").appendChild(d);
+}
+function readLegs() {
+  return [...document.querySelectorAll("#legs .legrow")].map(r => ({
+    action: r.querySelector(".lAct").value, type: r.querySelector(".lType").value,
+    strike: r.querySelector(".lStrike").value, expiry: r.querySelector(".lExp").value,
+    premium: r.querySelector(".lPrem").value
+  })).filter(l => l.strike || l.premium);
+}
+
+/* ---------- close ---------- */
+function startClose(id) {
+  closingId = id;
+  const t = db.trades.find(x => x.id === id);
+  document.getElementById("closeTitle").textContent = `Close ${t.ticker} ${LABEL[t.strat] || t.strat} — ${t.qty}x, entered ${t.date}`;
+  document.getElementById("cDate").value = today();
+  document.getElementById("cPrice").value = 0;
+  document.getElementById("cFee").value = 0;
+  document.getElementById("closeWrap").classList.remove("hidden");
+  updateClosePreview();
+  document.getElementById("closeWrap").scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+function updateClosePreview() {
+  if (!closingId) return;
+  const t = db.trades.find(x => x.id === closingId);
+  const sim = Object.assign({}, t, { exit: { date: document.getElementById("cDate").value, price: Number(document.getElementById("cPrice").value) || 0, fee: Number(document.getElementById("cFee").value) || 0, outcome: "closed" } });
+  const p = realizedPnl(sim), risk = capitalAtRisk(t);
+  document.getElementById("closePreview").innerHTML =
+    `<div style="display:flex;gap:26px;flex-wrap:wrap">
+      <div><div class="statlbl">Realized P&amp;L</div><div class="stat ${sgn(p)}">${money(p)}</div></div>
+      <div><div class="statlbl">Return on risk</div><div class="stat ${sgn(p)}">${isNaN(risk) || !risk ? "—" : pct(p / risk)}</div></div>
+      <div><div class="statlbl">Capital freed</div><div class="stat">${isNaN(risk) ? "—" : money(risk)}</div></div>
+    </div>`;
+}
+function confirmClose() {
+  const t = db.trades.find(x => x.id === closingId);
+  if (!t) return;
+  const d = document.getElementById("cDate").value;
+  if (!d) return alert("Enter an exit date.");
+  t.exit = { date: d, price: Number(document.getElementById("cPrice").value) || 0, fee: Number(document.getElementById("cFee").value) || 0, outcome: document.getElementById("cOutcome").value };
+  save(); cancelClose(); render();
+}
+function cancelClose() { closingId = null; document.getElementById("closeWrap").classList.add("hidden"); }
+function reopen(id) { const t = db.trades.find(x => x.id === id); if (t && confirm("Reopen this position?")) { delete t.exit; save(); render(); } }
+function delTrade(id) { if (confirm("Delete this trade permanently?")) { db.trades = db.trades.filter(t => t.id !== id); save(); render(); } }
+
+/* ---------- settings / data ---------- */
+function saveSettings() {
+  const v = Number(document.getElementById("sStart").value);
+  if (!v || v <= 0) return alert("Starting capital must be a positive number.");
+  db.start = v;
+  db.basis = document.getElementById("sBasis").value;
+  db.name = document.getElementById("sName").value.trim() || "5K Options Challenge";
+  save(); render();
+}
+function exportData() { dl(JSON.stringify(Object.assign({}, db, { updated: today() }), null, 2), "data.json", "application/json"); }
+function exportCSV() {
+  const h = ["entry_date", "ticker", "strategy", "expiry", "direction", "contracts", "net_price", "width", "capital_at_risk", "iv", "delta", "spot", "fee_in", "called_by", "exit_date", "exit_price", "fee_out", "outcome", "realized_pnl", "notes"];
+  const rows = db.trades.map(t => [t.date, t.ticker, LABEL[t.strat] || t.strat, t.expiry || "", t.dir, t.qty, t.price, t.width || "", isNaN(capitalAtRisk(t)) ? "" : capitalAtRisk(t).toFixed(2), t.iv || "", t.delta || "", t.spot || "", t.feeIn || 0, t.by || "", t.exit?.date || "", t.exit?.price ?? "", t.exit?.fee ?? "", t.exit?.outcome || "OPEN", t.exit ? realizedPnl(t).toFixed(2) : "", (t.notes || "").replace(/"/g, '""')]);
+  dl([h, ...rows].map(r => r.map(c => `"${c}"`).join(",")).join("\n"), `options-5k-${today()}.csv`, "text/csv");
+}
+function dl(content, name, type) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([content], { type }));
+  a.download = name; a.click(); URL.revokeObjectURL(a.href);
+}
+function importData(e) {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const d = JSON.parse(r.result);
+      if (!Array.isArray(d.trades)) throw new Error("Not a tracker export — no trades array.");
+      if (!confirm(`Replace current data with ${d.trades.length} trade(s)?`)) return;
+      db = Object.assign({}, DEFAULTS, d); save(); render();
+    } catch (err) { alert("Import failed: " + err.message); }
+  };
+  r.readAsText(f); e.target.value = "";
+}
+function reloadPublished() {
+  if (!confirm("Discard local edits and reload the published data.json?")) return;
+  try { localStorage.removeItem(KEY); } catch (e) {}
+  location.reload();
+}
+function wipe() {
+  if (!confirm("Erase all trades? Export first if you want a backup.")) return;
+  if (!confirm("Really erase everything? This cannot be undone.")) return;
+  db = Object.assign({}, DEFAULTS, { name: db.name, start: db.start, basis: db.basis, trades: [] });
+  save(); render();
+}
+function loadSample() {
+  if (db.trades.length && !confirm("This replaces current trades. Continue?")) return;
+  db = Object.assign({}, DEFAULTS, {
+    name: db.name, start: 5000, basis: "start", updated: today(),
+    trades: [
+      { id: uid(), date: "2026-07-06", ticker: "SPY", strat: "credit_put_spread", qty: 2, expiry: "2026-07-31", dir: "credit", price: 1.20, width: 5, feeIn: 2.60, iv: 17.2, delta: 0.18, spot: 548.10, by: "Upender", notes: "Bull put below support, 25 DTE.", legs: [], exit: { date: "2026-07-24", price: 0.30, fee: 2.60, outcome: "closed" } },
+      { id: uid(), date: "2026-07-14", ticker: "TSLA", strat: "iron_condor", qty: 1, expiry: "2026-08-14", dir: "credit", price: 2.05, width: 10, feeIn: 5.20, iv: 51.3, delta: -0.03, spot: 302.80, by: "Ravi", notes: "IV crush play post-earnings.", legs: [], exit: { date: "2026-08-14", price: 0, fee: 0, outcome: "expired" } },
+      { id: uid(), date: "2026-07-21", ticker: "AMD", strat: "credit_call_spread", qty: 2, expiry: "2026-08-21", dir: "credit", price: 0.95, width: 5, feeIn: 2.60, iv: 38.9, delta: -0.15, spot: 164.30, by: "Sneha", notes: "Stopped when it broke above the short strike.", legs: [], exit: { date: "2026-08-11", price: 2.80, fee: 2.60, outcome: "stopped" } },
+      { id: uid(), date: "2026-08-04", ticker: "NVDA", strat: "debit_call_spread", qty: 1, expiry: "2026-09-18", dir: "debit", price: 4.10, width: 10, feeIn: 1.30, iv: 42.5, delta: 0.44, spot: 178.20, by: "Upender", notes: "Earnings run-up, defined risk.", legs: [] },
+      { id: uid(), date: "2026-08-15", ticker: "SPY", strat: "credit_put_spread", qty: 3, expiry: "2026-09-19", dir: "credit", price: 1.05, width: 5, feeIn: 3.90, iv: 16.1, delta: 0.16, spot: 561.20, by: "Ravi", notes: "", legs: [] }
+    ]
+  });
+  save(); render(); showTab("dash");
+}
+
+/* ---------- wiring ---------- */
+function showTab(name) {
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === name));
+  ["dash", "open", "closed", "add", "setup"].forEach(n => document.getElementById("tab-" + n).classList.toggle("hidden", n !== name));
+}
+document.querySelectorAll(".tab").forEach(t => t.onclick = () => showTab(t.dataset.tab));
+["fStrat", "fQty", "fPrice", "fWidth", "fDir", "fFeeIn", "fRiskOverride"].forEach(id =>
+  document.getElementById(id).addEventListener("input", () => {
+    const s = document.getElementById("fStrat").value;
+    document.getElementById("widthWrap").style.opacity = (DEFINED_CREDIT.includes(s) || s === "csp") ? 1 : .45;
+    document.getElementById("riskOverrideWrap").classList.toggle("hidden", !UNDEFINED.includes(s));
+    updatePreview();
+  }));
+["cDate", "cPrice", "cFee"].forEach(id => document.getElementById(id).addEventListener("input", updateClosePreview));
+document.getElementById("fDate").value = today();
+addLeg();
+boot();
+</script>
+</body>
+</html>
