@@ -3,7 +3,6 @@
   "start": 1000,
   "goal": 5000,
   "basis": "equity",
-  "updated": "2026-08-20",
   "trades": [
     {
       "id": "v0818",
@@ -23,7 +22,12 @@
       "by": "",
       "notes": "Migrated from spreadsheet. Bought 302, sold 404.",
       "legs": [],
-      "exit": { "date": "2026-08-18", "price": 4.04, "fee": 0, "outcome": "closed" }
+      "exit": {
+        "date": "2026-08-18",
+        "price": 4.04,
+        "fee": 0,
+        "outcome": "closed"
+      }
     },
     {
       "id": "spy0818a",
@@ -43,7 +47,12 @@
       "by": "",
       "notes": "157 initial bet +17 sell leg close -50 sell leg add. Net basis 124, closed at 24.",
       "legs": [],
-      "exit": { "date": "2026-08-18", "price": 0.24, "fee": 0, "outcome": "closed" }
+      "exit": {
+        "date": "2026-08-18",
+        "price": 0.24,
+        "fee": 0,
+        "outcome": "closed"
+      }
     },
     {
       "id": "spy0818b",
@@ -63,7 +72,12 @@
       "by": "",
       "notes": "Migrated from spreadsheet. Bought 234, sold 332.",
       "legs": [],
-      "exit": { "date": "2026-08-18", "price": 3.32, "fee": 0, "outcome": "closed" }
+      "exit": {
+        "date": "2026-08-18",
+        "price": 3.32,
+        "fee": 0,
+        "outcome": "closed"
+      }
     },
     {
       "id": "nee0818",
@@ -73,7 +87,7 @@
       "qty": 1,
       "expiry": "",
       "dir": "debit",
-      "price": 1.90,
+      "price": 1.9,
       "width": 0,
       "feeIn": 0,
       "iv": "",
@@ -92,7 +106,7 @@
       "qty": 1,
       "expiry": "",
       "dir": "debit",
-      "price": 2.80,
+      "price": 2.8,
       "width": 0,
       "feeIn": 0,
       "iv": "",
@@ -101,7 +115,13 @@
       "riskOverride": 280,
       "by": "",
       "notes": "Open. Add expiry and strategy type when convenient.",
-      "legs": []
+      "legs": [],
+      "exit": {
+        "date": "2026-08-21",
+        "price": 3.28,
+        "fee": 0,
+        "outcome": "closed"
+      }
     },
     {
       "id": "spy0818c",
@@ -111,7 +131,7 @@
       "qty": 1,
       "expiry": "",
       "dir": "debit",
-      "price": 3.50,
+      "price": 3.5,
       "width": 0,
       "feeIn": 0,
       "iv": "",
@@ -122,5 +142,6 @@
       "notes": "Open. Add expiry and strategy type when convenient.",
       "legs": []
     }
-  ]
+  ],
+  "updated": "2026-08-21"
 }
